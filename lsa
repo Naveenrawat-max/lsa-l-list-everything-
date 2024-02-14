@@ -1,0 +1,41 @@
+#!/bin/bash
+
+get_color_code() {
+    local file=$1
+
+    if [ -d "$file" ]; then
+        # Directory (blue)
+        echo -e "\e[1;34m"
+    elif [ -x "$file" ]; then
+        # Executable (green)
+        echo -e "\e[1;32m"
+    fi
+}
+
+list_contents() {
+    local dir=$1
+    local indent=$2
+
+    local contents=$(find "$dir" -maxdepth 1 -mindepth 1 ! -name ".*")
+
+    while IFS= read -r item; do
+        local base=$(basename "$item")
+
+        local color_code=$(get_color_code "$item")
+
+        if [ -d "$item" ]; then
+            printf "${color_code}%s└── %s\e[0m\n" "$indent" "$base"
+            list_contents "$item" "$indent    "
+        else
+            printf "${color_code}%s   ├── %s\e[0m\n" "$indent" "$base"
+        fi
+    done <<< "$contents"
+}
+
+current_dir=$(pwd)
+
+printf "\e[1;32m%s\n" "$current_dir"
+
+printf "Subdirectories and contents:\n"
+list_contents "$current_dir" ""
+
