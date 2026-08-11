@@ -1,41 +1,108 @@
 #!/bin/bash
 
-get_color_code() {
-    local file=$1
+shopt -s nullglob
+
+RESET="\e[0m"
+
+get_icon_and_color() {
+    local file="$1"
 
     if [ -d "$file" ]; then
-        # Directory (blue)
-        echo -e "\e[1;34m"
+        ICON="📁"
+        COLOR="\e[1;34m"
+    elif [ -L "$file" ]; then
+        ICON="🔗"
+        COLOR="\e[1;36m"
     elif [ -x "$file" ]; then
-        # Executable (green)
-        echo -e "\e[1;32m"
+        ICON="🚀"
+        COLOR="\e[1;32m"
+    else
+        local base="${file##*/}"
+        local ext="${base##*.}"
+
+        # If the file has no extension, ext equals base
+        if [ "$ext" = "$base" ]; then
+            ext=""
+        fi
+
+        # Lowercase the extension for matching
+        ext="${ext,,}"
+
+        case "$ext" in
+            png|jpg|jpeg|gif|bmp|svg|ico|webp)
+                ICON="🖼️ "
+                COLOR="\e[1;35m"
+                ;;
+            mp4|mkv|avi|mov|webm)
+                ICON="🎥"
+                COLOR="\e[1;33m"
+                ;;
+            mp3|wav|flac|ogg)
+                ICON="🎵"
+                COLOR="\e[1;33m"
+                ;;
+            zip|tar|gz|bz2|xz|7z|rar)
+                ICON="📦"
+                COLOR="\e[1;31m"
+                ;;
+            pdf)
+                ICON="📕"
+                COLOR="\e[1;31m"
+                ;;
+            txt|md|csv|log)
+                ICON="📄"
+                COLOR="\e[0;37m"
+                ;;
+            sh|bash|zsh)
+                ICON="📜"
+                COLOR="\e[1;32m"
+                ;;
+            py|js|ts|c|cpp|java|go|rs|php|html|css)
+                ICON="📝"
+                COLOR="\e[1;36m"
+                ;;
+            *)
+                ICON="📄"
+                COLOR="\e[0m"
+                ;;
+        esac
     fi
 }
 
 list_contents() {
-    local dir=$1
-    local indent=$2
+    local dir="$1"
+    local indent="$2"
 
-    local contents=$(find "$dir" -maxdepth 1 -mindepth 1 ! -name ".*")
+    local items=("$dir"/*)
+    local total=${#items[@]}
+    local count=0
 
-    while IFS= read -r item; do
-        local base=$(basename "$item")
+    for item in "${items[@]}"; do
+        ((count++))
+        local base="${item##*/}"
 
-        local color_code=$(get_color_code "$item")
+        # Reset ICON and COLOR
+        ICON=""
+        COLOR=""
+        get_icon_and_color "$item"
 
-        if [ -d "$item" ]; then
-            printf "${color_code}%s└── %s\e[0m\n" "$indent" "$base"
-            list_contents "$item" "$indent    "
+        if [ "$count" -eq "$total" ]; then
+            # Last item
+            printf "%s└── ${COLOR}%s %s${RESET}\n" "$indent" "$ICON" "$base"
+            if [ -d "$item" ]; then
+                list_contents "$item" "$indent    "
+            fi
         else
-            printf "${color_code}%s   ├── %s\e[0m\n" "$indent" "$base"
+            # Not last item
+            printf "%s├── ${COLOR}%s %s${RESET}\n" "$indent" "$ICON" "$base"
+            if [ -d "$item" ]; then
+                list_contents "$item" "$indent│   "
+            fi
         fi
-    done <<< "$contents"
+    done
 }
 
-current_dir=$(pwd)
-
-printf "\e[1;32m%s\n" "$current_dir"
-
+current_dir="${1:-$(pwd)}"
+printf "\e[1;32m📁 %s${RESET}\n" "$current_dir"
 printf "Subdirectories and contents:\n"
 list_contents "$current_dir" ""
-
