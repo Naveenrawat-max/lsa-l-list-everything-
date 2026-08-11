@@ -1,27 +1,24 @@
 #!/bin/bash
 
-get_color_code() {
-    local file=$1
-
-    if [ -d "$file" ]; then
-        # Directory (blue)
-        echo -e "\e[1;34m"
-    elif [ -x "$file" ]; then
-        # Executable (green)
-        echo -e "\e[1;32m"
-    fi
-}
-
 list_contents() {
     local dir=$1
     local indent=$2
 
-    local contents=$(find "$dir" -maxdepth 1 -mindepth 1 ! -name ".*")
+    local items=("$dir"/*)
+    for item in "${items[@]}"; do
+        # Skip if glob didn't match anything (e.g., empty directory)
+        [ -e "$item" ] || [ -L "$item" ] || continue
 
-    while IFS= read -r item; do
-        local base=$(basename "$item")
+        local base="${item##*/}"
 
-        local color_code=$(get_color_code "$item")
+        local color_code=""
+        if [ -d "$item" ]; then
+            # Directory (blue)
+            color_code="\e[1;34m"
+        elif [ -x "$item" ]; then
+            # Executable (green)
+            color_code="\e[1;32m"
+        fi
 
         if [ -d "$item" ]; then
             printf "${color_code}%s└── %s\e[0m\n" "$indent" "$base"
@@ -29,13 +26,24 @@ list_contents() {
         else
             printf "${color_code}%s   ├── %s\e[0m\n" "$indent" "$base"
         fi
-    done <<< "$contents"
+    done
 }
 
-current_dir=$(pwd)
+target_dir="${1:-$(pwd)}"
 
-printf "\e[1;32m%s\n" "$current_dir"
+if [ ! -d "$target_dir" ]; then
+    echo "Error: Directory '$target_dir' does not exist."
+    exit 1
+fi
+
+target_dir=$(cd "$target_dir" >/dev/null 2>&1 && pwd)
+if [ -z "$target_dir" ]; then
+    echo "Error: Cannot access directory"
+    exit 1
+fi
+
+printf "\e[1;32m%s\e[0m\n" "$target_dir"
 
 printf "Subdirectories and contents:\n"
-list_contents "$current_dir" ""
-
+shopt -s nullglob
+list_contents "$target_dir" ""
