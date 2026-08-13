@@ -1,8 +1,8 @@
 #!/bin/bash
 
 list_contents() {
-    local dir=$1
-    local indent=$2
+    local dir="$1"
+    local indent="$2"
 
     local items=("$dir"/*)
     for item in "${items[@]}"; do
@@ -20,11 +20,18 @@ list_contents() {
             color_code="\e[1;32m"
         fi
 
-        if [ -d "$item" ]; then
-            printf "${color_code}%s└── %s\e[0m\n" "$indent" "$base"
-            list_contents "$item" "$indent    "
+        if [ "$count" -eq "$total" ]; then
+            # Last item
+            printf "%s└── ${COLOR}%s %s${RESET}\n" "$indent" "$ICON" "$base"
+            if [ -d "$item" ]; then
+                list_contents "$item" "$indent    "
+            fi
         else
-            printf "${color_code}%s   ├── %s\e[0m\n" "$indent" "$base"
+            # Not last item
+            printf "%s├── ${COLOR}%s %s${RESET}\n" "$indent" "$ICON" "$base"
+            if [ -d "$item" ]; then
+                list_contents "$item" "$indent│   "
+            fi
         fi
     done
 }
